@@ -1,39 +1,36 @@
-import { Body, Controller, Get, Param, Post, Patch, Delete, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Query } from '@nestjs/common';
 import { WorkoutsService } from './workouts.service';
-import type { Workout } from './workout.interface';
 import { CreateWorkoutDto } from './dto/create-workout.dto';
-import { UpdateWorkoutDto } from './dto/update-workout.dto';
 
 @Controller('workouts')
 export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
 
   @Get()
-  getAll(): Workout[] {
-    return this.workoutsService.getAllWorkouts();
+  getAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.workoutsService.getAllWorkouts(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 5,
+      search || ''
+    );
   }
 
-  // Ось цей метод шукає по ID
   @Get(':id')
-  getOne(@Param('id') id: string): Workout {
+  getOne(@Param('id') id: string) {
     return this.workoutsService.getWorkoutById(id);
   }
 
   @Post()
-  create(@Body() body: CreateWorkoutDto): Workout {
-    return this.workoutsService.createWorkout(body);
+  create(@Body() createWorkoutDto: CreateWorkoutDto) {
+    return this.workoutsService.createWorkout(createWorkoutDto);
   }
 
-  // Метод для оновлення
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() body: UpdateWorkoutDto): Workout {
-    return this.workoutsService.updateWorkout(id, body);
-  }
-
-  // Метод для видалення
   @Delete(':id')
-  @HttpCode(204)
-  remove(@Param('id') id: string): void {
-    this.workoutsService.deleteWorkout(id);
+  remove(@Param('id') id: string) {
+    return this.workoutsService.deleteWorkout(id);
   }
 }

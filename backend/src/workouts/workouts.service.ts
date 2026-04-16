@@ -7,8 +7,28 @@ import { UpdateWorkoutDto } from './dto/update-workout.dto';
 export class WorkoutsService {
   private workouts: Workout[] = [];
 
-  getAllWorkouts(): Workout[] {
-    return this.workouts;
+  getAllWorkouts(page: number = 1, limit: number = 5, search: string = '') {
+    let result = this.workouts;
+
+    // 1. Фільтрація
+    if (search) {
+      result = result.filter(w => 
+        w.title.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // 2. Пагінація
+    const total = result.length;
+    const startIndex = (page - 1) * limit;
+    const paginatedData = result.slice(startIndex, startIndex + limit);
+
+    return {
+      data: paginatedData,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   getWorkoutById(id: string): Workout {
