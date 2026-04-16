@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { 
+  Container, Typography, Box, TextField, Button, Card, 
+  CardContent, IconButton, CircularProgress, Alert, Stack, Chip 
+} from '@mui/material';
+import { DeleteOutlined as DeleteOutlineIcon, AddCircleOutlined as AddCircleOutlineIcon } from '@mui/icons-material';
 import { apiClient } from '../api/apiClient';
 
-// Схема валідації (Zod)
 const workoutSchema = z.object({
   title: z.string().min(3, 'Назва має містити мінімум 3 символи'),
   durationMin: z.number().min(1, 'Мінімум 1 хвилина'),
@@ -19,103 +23,135 @@ interface Workout {
   durationMin: number;
 }
 
+const cardStyle = {
+  borderRadius: 3,
+  boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)',
+  border: '1px solid',
+  borderColor: 'divider',
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    boxShadow: '0px 6px 18px rgba(0, 0, 0, 0.08)',
+  },
+};
+
 export function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // 2. Налаштування React Hook Form
   const { register, handleSubmit, reset, formState: { errors } } = useForm<WorkoutFormData>({
     resolver: zodResolver(workoutSchema),
   });
 
-  // 3. Функція завантаження даних
   const fetchWorkouts = async () => {
+    setIsLoading(true);
     try {
       const response = await apiClient.get<Workout[]>('/workouts');
       setWorkouts(response.data);
     } catch (error) {
-      console.error('Помилка завантаження тренувань:', error);
+      setApiError('Не вдалося завантажити дані. Перевірте з’єднання з сервером.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Викликається один раз при завантаженні сторінки
-  useEffect(() => {
-    fetchWorkouts();
-  }, []);
+  useEffect(() => { fetchWorkouts(); }, []);
 
-  // 4. Обробник відправки форми
   const onSubmit = async (data: WorkoutFormData) => {
     try {
       await apiClient.post('/workouts', data);
-      reset(); // Очищаємо форму після успіху
-      fetchWorkouts(); // Оновлюємо список
+      reset();
+      fetchWorkouts();
     } catch (error) {
-      console.error('Помилка створення тренування:', error);
+      setApiError('Помилка при створенні тренування.');
     }
   };
 
-  // 5. Обробник видалення
   const handleDelete = async (id: string) => {
     try {
       await apiClient.delete(`/workouts/${id}`);
-      fetchWorkouts(); // Оновлюємо список після видалення
+      fetchWorkouts();
     } catch (error) {
-      console.error('Помилка видалення:', error);
+      setApiError('Не вдалося видалити запис.');
     }
   };
 
   return (
-    <div>
-      <h1>Мої тренування</h1>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 4 }}>💪 Мої тренування</Typography>
       
-      <div style={{ display: 'flex', gap: '40px', marginTop: '20px' }}>
-        {/* Блок форми */}
-        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '300px' }}>
-          <h3>Додати нове</h3>
-          
-          <div>
-            <input 
-              {...register('title')} 
-              placeholder="Назва (напр. Пробіжка)" 
-              style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} 
-            />
-            {errors.title && <p style={{ color: 'red', margin: '5px 0 0', fontSize: '12px' }}>{errors.title.message}</p>}
-          </div>
+      {apiError && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{apiError}</Alert>}
 
-          <div>
-            <input 
-              {...register('durationMin', { valueAsNumber: true })} 
-              type="number" 
-              placeholder="Тривалість (хвилини)" 
-              style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} 
-            />
-            {errors.durationMin && <p style={{ color: 'red', margin: '5px 0 0', fontSize: '12px' }}>{errors.durationMin.message}</p>}
-          </div>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, gap: 4 }}>
+        {/* Форма */}
+        <Box>
+          <Card sx={{ ...cardStyle, p: 1 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>Новий запис</Typography>
+              <Stack component="form" onSubmit={handleSubmit(onSubmit)} spacing={3}>
+                <TextField
+                  fullWidth
+                  label="Назва тренування"
+                  variant="outlined"
+                  {...register('title')}
+                  error={!!errors.title}
+                  helperText={errors.title?.message}
+                />
+                <TextField
+                  fullWidth
+                  label="Тривалість (хв)"
+                  type="number"
+                  variant="outlined"
+                  {...register('durationMin', { valueAsNumber: true })}
+                  error={!!errors.durationMin}
+                  helperText={errors.durationMin?.message}
+                />
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  size="large"
+                  startIcon={<AddCircleOutlineIcon />}
+                  disabled={isLoading}
+                  sx={{ borderRadius: 2, py: 1.5, fontWeight: 'bold', textTransform: 'none' }}
+                >
+                  Зберегти
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
 
-          <button type="submit" style={{ padding: '10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Зберегти
-          </button>
-        </form>
-
-        {/* Блок списку */}
-        <div style={{ flex: 1 }}>
-          <h3>Історія тренувань</h3>
-          {workouts.length === 0 ? <p>Тренувань поки немає.</p> : (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {workouts.map(w => (
-                <li key={w.id} style={{ border: '1px solid #ccc', borderRadius: '4px', margin: '0 0 10px 0', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>{w.title}</strong> ({w.durationMin} хв) <br/>
-                    <small style={{ color: 'gray' }}>{new Date(w.date).toLocaleString()}</small>
-                  </div>
-                  <button onClick={() => handleDelete(w.id)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-                    Видалити
-                  </button>
-                </li>
+        {/* Список */}
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>Історія активності</Typography>
+          {isLoading && workouts.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
+          ) : (
+            <Stack spacing={2}>
+              {workouts.map((w) => (
+                <Card key={w.id} sx={{ ...cardStyle, '&:hover': { transform: 'translateX(5px)' } }}>
+                  <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: '16px !important' }}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{w.title}</Typography>
+                      {/**/}
+                      <Stack direction="row" spacing={1} sx={{ mt: 0.5, alignItems: 'center' }}>
+                        <Chip label={`${w.durationMin} хв`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(w.date).toLocaleDateString()}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                    <IconButton onClick={() => handleDelete(w.id)} color="error" sx={{ bgcolor: 'error.lighter' }}>
+                      <DeleteOutlineIcon />
+                    </IconButton>
+                  </CardContent>
+                </Card>
               ))}
-            </ul>
+              {workouts.length === 0 && <Typography color="text.secondary">Записів поки немає. Час розпочати тренування!</Typography>}
+            </Stack>
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Container>
   );
 }

@@ -1,26 +1,36 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link as RouterLink } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 
 function App() {
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <header style={{ display: 'flex', gap: '20px', marginBottom: '30px', alignItems: 'center' }}>
-        <h2>🏋️ Фітнес Трекер</h2>
-        
-        <nav style={{ display: 'flex', gap: '15px' }}>
-          <Link to="/" style={{ textDecoration: 'none', color: '#3b82f6', fontWeight: 'bold' }}>
-            Тренування
-          </Link>
-          <Link to="/exercises" style={{ textDecoration: 'none', color: '#3b82f6', fontWeight: 'bold' }}>
-            Вправи
-          </Link>
-        </nav>
-      </header>
+    <Box sx={{ flexGrow: 1, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      {/* Шапка навігації Material UI */}
+      <AppBar position="static" elevation={1}>
+        <Toolbar>
+          <FitnessCenterIcon sx={{ mr: 2 }} />
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+            Fitness Tracker
+          </Typography>
+          <Box>
+            <Button color="inherit" component={RouterLink} to="/">
+              Головна
+            </Button>
+            <Button color="inherit" component={RouterLink} to="/workouts">
+              Тренування
+            </Button>
+            <Button color="inherit" component={RouterLink} to="/exercises">
+              Вправи
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
       
-      <main>
-        {/* Компонент Outlet — це "вікно", куди React Router буде підставляти вміст сторінок */}
+      {/* Основний контент сторінок */}
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Outlet /> 
-      </main>
-    </div>
+      </Container>
+    </Box>
   );
 }
 

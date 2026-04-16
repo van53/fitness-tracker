@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { 
+  Container, Typography, Box, TextField, Button, Card, 
+  CardContent, IconButton, CircularProgress, Alert, Stack, Chip 
+} from '@mui/material';
+import { DeleteOutlined as DeleteOutlineIcon, ListAlt as ListAltIcon } from '@mui/icons-material';
 import { apiClient } from '../api/apiClient';
 
 const exerciseSchema = z.object({
   name: z.string().min(2, 'Мінімум 2 символи'),
-  muscleGroup: z.string().min(2, 'Обов\'язкове поле'),
+  muscleGroup: z.string().min(2, 'Вкажіть групу м’язів'),
   description: z.string().optional(),
 });
 
@@ -19,25 +24,36 @@ interface Exercise {
   description?: string;
 }
 
+const cardStyle = {
+  borderRadius: 3,
+  boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)',
+  border: '1px solid',
+  borderColor: 'divider',
+  transition: 'all 0.2s ease-in-out',
+};
+
 export function ExercisesPage() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ExerciseFormData>({
     resolver: zodResolver(exerciseSchema),
   });
 
   const fetchExercises = async () => {
+    setIsLoading(true);
     try {
       const response = await apiClient.get<Exercise[]>('/exercises');
       setExercises(response.data);
     } catch (error) {
-      console.error('Помилка завантаження вправ:', error);
+      setApiError('Помилка завантаження довідника.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchExercises();
-  }, []);
+  useEffect(() => { fetchExercises(); }, []);
 
   const onSubmit = async (data: ExerciseFormData) => {
     try {
@@ -45,7 +61,7 @@ export function ExercisesPage() {
       reset();
       fetchExercises();
     } catch (error) {
-      console.error('Помилка створення вправи:', error);
+      setApiError('Не вдалося додати вправу.');
     }
   };
 
@@ -54,68 +70,82 @@ export function ExercisesPage() {
       await apiClient.delete(`/exercises/${id}`);
       fetchExercises();
     } catch (error) {
-      console.error('Помилка видалення:', error);
+      setApiError('Помилка видалення.');
     }
   };
 
   return (
-    <div>
-      <h1>Довідник вправ</h1>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 4 }}>📚 Довідник вправ</Typography>
       
-      <div style={{ display: 'flex', gap: '40px', marginTop: '20px' }}>
-        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '300px' }}>
-          <h3>Додати вправу</h3>
-          
-          <div>
-            <input 
-              {...register('name')} 
-              placeholder="Назва (напр. Віджимання)" 
-              style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} 
-            />
-            {errors.name && <p style={{ color: 'red', margin: '5px 0 0', fontSize: '12px' }}>{errors.name.message}</p>}
-          </div>
+      {apiError && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{apiError}</Alert>}
 
-          <div>
-            <input 
-              {...register('muscleGroup')} 
-              placeholder="Група м'язів (напр. Груди)" 
-              style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} 
-            />
-            {errors.muscleGroup && <p style={{ color: 'red', margin: '5px 0 0', fontSize: '12px' }}>{errors.muscleGroup.message}</p>}
-          </div>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, gap: 4 }}>
+        <Box>
+          <Card sx={{ ...cardStyle, p: 1 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>Додати вправу</Typography>
+              <Stack component="form" onSubmit={handleSubmit(onSubmit)} spacing={2.5}>
+                <TextField
+                  fullWidth
+                  label="Назва вправи"
+                  {...register('name')}
+                  error={!!errors.name}
+                  helperText={errors.name?.message}
+                />
+                <TextField
+                  fullWidth
+                  label="Група м'язів"
+                  {...register('muscleGroup')}
+                  error={!!errors.muscleGroup}
+                  helperText={errors.muscleGroup?.message}
+                />
+                <TextField
+                  fullWidth
+                  label="Опис (опціонально)"
+                  multiline
+                  rows={3}
+                  {...register('description')}
+                />
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  color="success"
+                  size="large"
+                  startIcon={<ListAltIcon />}
+                  sx={{ borderRadius: 2, py: 1.5, fontWeight: 'bold', textTransform: 'none' }}
+                >
+                  Додати до бази
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
 
-          <div>
-            <textarea 
-              {...register('description')} 
-              placeholder="Опис (необов'язково)" 
-              style={{ width: '100%', padding: '8px', boxSizing: 'border-box', minHeight: '80px' }} 
-            />
-          </div>
-
-          <button type="submit" style={{ padding: '10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Додати до довідника
-          </button>
-        </form>
-
-        <div style={{ flex: 1 }}>
-          <h3>Усі вправи</h3>
-          {exercises.length === 0 ? <p>Довідник порожній.</p> : (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {exercises.map(e => (
-                <li key={e.id} style={{ border: '1px solid #ccc', borderRadius: '4px', margin: '0 0 10px 0', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>{e.name}</strong> <span style={{ color: '#10b981' }}>[{e.muscleGroup}]</span> <br/>
-                    {e.description && <small style={{ color: 'gray' }}>{e.description}</small>}
-                  </div>
-                  <button onClick={() => handleDelete(e.id)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-                    Видалити
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'text.secondary' }}>Всі вправи</Typography>
+          <Stack spacing={2}>
+            {exercises.map((e) => (
+              <Card key={e.id} sx={{ ...cardStyle, '&:hover': { boxShadow: '0px 6px 20px rgba(0,0,0,0.1)' } }}>
+                <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', p: '20px !important' }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>{e.name}</Typography>
+                    <Chip label={e.muscleGroup} size="small" sx={{ mt: 1, mb: 1, bgcolor: 'success.lighter', color: 'success.dark', fontWeight: 'bold' }} />
+                    {e.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {e.description}
+                      </Typography>
+                    )}
+                  </Box>
+                  <IconButton onClick={() => handleDelete(e.id)} color="error">
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </Box>
+      </Box>
+    </Container>
   );
 }
